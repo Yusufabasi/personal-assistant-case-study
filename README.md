@@ -146,6 +146,18 @@ python tools/scan.py .                  # must print 0 finding(s)
 
 CI runs all three on every push.
 
+## Credits
+
+The assistant is the owner's own project: the idea, the build plan, the n8n workflows and the
+instance they run on.
+
+The October 2026 audit and repair were done together with **Claude** (Anthropic, through Claude
+Code), working at the owner's direction. Claude read the live instance's execution history,
+found the causes of the failures, wrote and applied the fixes, wrote the tests and install
+scripts, and drafted these docs from the evidence. The owner reviewed and approved each change
+to the live instance and decided what to publish. Commits made with Claude's help carry a
+`Co-Authored-By: Claude` line.
+
 ## Before publishing anything from your own instance
 
 Run exports through `tools/sanitize_n8n.py`, then `tools/scan.py` on the folder. If a real key
