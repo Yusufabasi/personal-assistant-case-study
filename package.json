@@ -1,0 +1,14 @@
+{
+  "name": "personal-assistant-case-study",
+  "private": true,
+  "description": "Test harness for the Code-node logic in the n8n workflows",
+  "scripts": {
+    "test": "node tests/code_nodes.test.js"
+  },
+  "devDependencies": {
+    "sql.js": "1.14.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

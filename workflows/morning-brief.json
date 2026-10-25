@@ -1,0 +1,216 @@
+{
+  "id": "hQX85hS0eq47Vdqa",
+  "name": "Morning Brief v2",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -128
+      ],
+      "id": "6c905549-1017-4059-bc35-ec60a914f9b8",
+      "name": "Schedule 06:00"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "02991fd4-74c1-4b98-b6e8-0e1d38f08fa3",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d68a3e01-367e-4276-be6c-d4d591f10a8c",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\n\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\n\n// 1. Tasks\nconst high = db.exec(\"SELECT id, title, due_date FROM tasks WHERE status='pending' AND priority='high' LIMIT 5\");\nconst medium = db.exec(\"SELECT id, title, due_date FROM tasks WHERE status='pending' AND priority='medium' LIMIT 5\");\nconst overdue = db.exec(\"SELECT id, title, due_date FROM tasks WHERE status='pending' AND due_date < date('now') AND due_date IS NOT NULL\");\n\n// 2. Projects\nconst projects = db.exec(\"SELECT name, status, last_updated FROM projects WHERE status='active'\");\n\n// 3. Events for today\nconst events = db.exec(\"SELECT title, start_time, end_time, location FROM events WHERE DATE(start_time) = DATE('now', 'localtime') ORDER BY start_time\");\n\n// 4. Habits & streaks\nlet habits = [];\ntry {\n  const r = db.exec(\"SELECT name, current_streak, best_streak, target_frequency FROM habits WHERE is_active = 1\");\n  habits = r[0]?.values.map(row => ({name: row[0], streak: row[1], best: row[2], target: row[3]})) || [];\n} catch(e) {}\n\n// 5. Commitments approaching deadline\nlet commitments = [];\ntry {\n  const r = db.exec(\"SELECT description, deadline, related_project FROM commitments WHERE status = 'active' AND deadline IS NOT NULL ORDER BY deadline ASC LIMIT 5\");\n  commitments = r[0]?.values.map(row => ({description: row[0], deadline: row[1], project: row[2]})) || [];\n} catch(e) {}\n\n// 6. Recent conversation summaries\nlet recentSummaries = [];\ntry {\n  const r = db.exec(\"SELECT summary, mood FROM conversation_summaries ORDER BY created_at DESC LIMIT 3\");\n  recentSummaries = r[0]?.values.map(row => ({summary: row[0], mood: row[1]})) || [];\n} catch(e) {}\n\n// 7. Active topics\nlet activeTopics = [];\ntry {\n  const r = db.exec(\"SELECT topic, summary, related_project FROM active_topics WHERE status = 'open' ORDER BY last_mentioned DESC LIMIT 5\");\n  activeTopics = r[0]?.values.map(row => ({topic: row[0], summary: row[1], project: row[2]})) || [];\n} catch(e) {}\n\n// 8. Contacts needing follow-up\nlet staleContacts = [];\ntry {\n  const r = db.exec(\"SELECT name, last_interaction, role, context FROM contacts WHERE last_interaction < datetime('now', '-14 days') OR last_interaction IS NULL ORDER BY last_interaction ASC LIMIT 5\");\n  staleContacts = r[0]?.values.map(row => ({name: row[0], lastSeen: row[1], role: row[2], context: row[3]})) || [];\n} catch(e) {}\n\n// 9. Spending this week\nlet weeklySpend = 0;\nlet topCategory = '';\ntry {\n  const r = db.exec(\"SELECT SUM(amount), category FROM expenses WHERE logged_at >= date('now', '-7 days') GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1\");\n  if (r[0]?.values.length) { weeklySpend = r[0].values[0][0] || 0; topCategory = r[0].values[0][1] || ''; }\n} catch(e) {}\n\n// 10. Recent knowledge additions\nlet recentKB = [];\ntry {\n  const r = db.exec(\"SELECT title, category, summary FROM knowledge_base WHERE created_at >= datetime('now', '-7 days') ORDER BY created_at DESC LIMIT 5\");\n  recentKB = r[0]?.values.map(row => ({title: row[0], category: row[1], summary: row[2]})) || [];\n} catch(e) {}\n\n// 11. Ideas count\nlet ideaCount = 0;\ntry {\n  const r = db.exec(\"SELECT COUNT(*) FROM ideas WHERE status = 'incubating'\");\n  ideaCount = r[0]?.values[0][0] || 0;\n} catch(e) {}\n\n// 12. Pending tasks count\nlet pendingCount = 0;\ntry {\n  const r = db.exec(\"SELECT COUNT(*) FROM tasks WHERE status = 'pending'\");\n  pendingCount = r[0]?.values[0][0] || 0;\n} catch(e) {}\n\ndb.close();\n\n// Load vault context\nconst context = fs.existsSync('/vault/AI Memory/context/current.md')\n  ? fs.readFileSync('/vault/AI Memory/context/current.md', 'utf8')\n  : '';\n\nreturn [{\n  json: {\n    high_priority: high[0]?.values.map(r => ({id: r[0], title: r[1], due: r[2]})) || [],\n    medium_priority: medium[0]?.values.map(r => ({id: r[0], title: r[1], due: r[2]})) || [],\n    overdue: overdue[0]?.values.map(r => ({id: r[0], title: r[1], due: r[2]})) || [],\n    active_projects: projects[0]?.values.map(r => ({name: r[0], status: r[1], updated: r[2]})) || [],\n    events_today: events[0]?.values.map(r => ({title: r[0], start: r[1], end: r[2], location: r[3]})) || [],\n    habits: habits,\n    commitments: commitments,\n    recent_summaries: recentSummaries,\n    active_topics: activeTopics,\n    stale_contacts: staleContacts,\n    weekly_spend: weeklySpend,\n    top_spend_category: topCategory,\n    recent_kb: recentKB,\n    idea_count: ideaCount,\n    pending_tasks: pendingCount,\n    weekly_context: context,\n    chat_id: $env.TELEGRAM_CHAT_ID,\n    date: new Date().toLocaleDateString('en-KE', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Nairobi'}),\n    greeting: getGreeting()\n  }\n}];\n\nfunction getGreeting() {\n  const hour = Number(new Intl.DateTimeFormat('en-KE', {hour: 'numeric', hourCycle: 'h23', timeZone: 'Africa/Nairobi'}).format(new Date()));\n  if (hour < 12) return 'Good morning';\n  if (hour < 17) return 'Good afternoon';\n  return 'Good evening';\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        0
+      ],
+      "id": "3f985bc9-1767-4235-913a-161b37a4db44",
+      "name": "GatherAllContext"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the user's personal assistant generating their morning intelligence brief.\n\n## Date\n{{ $json.date }}\n\n## User Context\n{{ $json.weekly_context }}\n\n## Data\nTASKS (high priority): {{ JSON.stringify($json.high_priority) }}\nTASKS (medium priority): {{ JSON.stringify($json.medium_priority) }}\nOVERDUE TASKS: {{ JSON.stringify($json.overdue) }}\nACTIVE PROJECTS: {{ JSON.stringify($json.active_projects) }}\nEVENTS TODAY: {{ JSON.stringify($json.events_today) }}\nHABITS: {{ JSON.stringify($json.habits) }}\nACTIVE COMMITMENTS: {{ JSON.stringify($json.commitments) }}\nRECENT CONVERSATIONS: {{ JSON.stringify($json.recent_summaries) }}\nACTIVE TOPICS: {{ JSON.stringify($json.active_topics) }}\nSTALE CONTACTS (need follow-up): {{ JSON.stringify($json.stale_contacts) }}\nWEEKLY SPENDING: {{ $json.weekly_spend }} KES (top: {{ $json.top_spend_category }})\nRECENT KNOWLEDGE: {{ JSON.stringify($json.recent_kb) }}\nIDEAS INCUBATING: {{ $json.idea_count }}\nPENDING TASKS TOTAL: {{ $json.pending_tasks }}\n\n## Instructions\nGenerate a concise, actionable morning brief. Be direct and specific — reference actual items, not generic advice.\n\nBe strict about accountability: if commitments are approaching deadline or tasks are overdue, say so directly.\n\nIf spending looks high, mention it briefly. If habits have streaks, acknowledge them.\n\nStructure your response as plain text (NOT JSON) formatted for Telegram. Use emoji sparingly. Keep it under 2000 characters.\n\nStart with the greeting: {{ $json.greeting }} — {{ $json.date.split(',')[0] }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "id": "83c2c757-460d-4a85-80b1-ac82419c3377",
+      "name": "GenerateBrief",
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst text = input.content?.[0]?.text || '';\nconst ctx = $('GatherAllContext').item.json;\nreturn [{ json: { chat_id: ctx.chat_id, message: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "512fcee4-b99b-4aaa-859b-4769746f1088",
+      "name": "ExtractBrief"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "b19e13de-778b-4076-80ea-2f74f1e82fc6",
+      "name": "SendBrief",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Schedule 06:00": {
+      "main": [
+        [
+          {
+            "node": "GatherAllContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "GatherAllContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "GatherAllContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GatherAllContext": {
+      "main": [
+        [
+          {
+            "node": "GenerateBrief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateBrief": {
+      "main": [
+        [
+          {
+            "node": "ExtractBrief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractBrief": {
+      "main": [
+        [
+          {
+            "node": "SendBrief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "errorWorkflow": "pErrAlert2610250"
+  },
+  "tags": []
+}

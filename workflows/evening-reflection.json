@@ -1,0 +1,340 @@
+{
+  "id": "YEQmjDzj4r6pxmiX",
+  "name": "Evening Reflection v2",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -208
+      ],
+      "id": "ed139804-fedb-4dab-9eec-ae363696604d",
+      "name": "Schedule 20:00"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a942e8fd-ab07-4260-801b-b23138277438",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ],
+      "id": "9a703ccd-7186-405c-b76b-6e4d7c74c537",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst created = db.exec(\"SELECT title, priority FROM tasks WHERE DATE(created_at) = DATE('now', 'localtime')\");\nconst completed = db.exec(\"SELECT title FROM tasks WHERE status='done' AND DATE(created_at) = DATE('now', 'localtime')\");\nconst pending = db.exec(\"SELECT title, priority FROM tasks WHERE status='pending' ORDER BY priority LIMIT 5\");\nconst msgs = db.exec(\"SELECT content FROM messages WHERE DATE(timestamp) = DATE('now', 'localtime') LIMIT 20\");\nlet expenses = [];\ntry { const r = db.exec(\"SELECT amount, category, description FROM expenses WHERE DATE(logged_at) = DATE('now', 'localtime')\"); expenses = r[0]?.values.map(row => ({amount: row[0], category: row[1], desc: row[2]})) || []; } catch(e) {}\nlet habitsToday = [];\ntry { const r = db.exec(\"SELECT h.name, he.completed, he.value FROM habit_entries he JOIN habits h ON h.id = he.habit_id WHERE he.date = date('now')\"); habitsToday = r[0]?.values.map(row => ({name: row[0], done: row[1], value: row[2]})) || []; } catch(e) {}\nlet moodToday = null;\ntry { const r = db.exec(\"SELECT mood, energy_level FROM mood_entries WHERE DATE(logged_at) = DATE('now') ORDER BY logged_at DESC LIMIT 1\"); if (r[0]?.values.length) moodToday = {mood: r[0].values[0][0], energy: r[0].values[0][1]}; } catch(e) {}\nlet commitments = [];\ntry { const r = db.exec(\"SELECT description, deadline FROM commitments WHERE status = 'active' ORDER BY deadline ASC LIMIT 5\"); commitments = r[0]?.values.map(row => ({desc: row[0], deadline: row[1]})) || []; } catch(e) {}\nlet recentTopics = [];\ntry { const r = db.exec(\"SELECT topic, summary FROM active_topics WHERE status = 'open' ORDER BY last_mentioned DESC LIMIT 3\"); recentTopics = r[0]?.values.map(row => ({topic: row[0], summary: row[1]})) || []; } catch(e) {}\nlet projects = [];\ntry { const r = db.exec(\"SELECT name, last_updated FROM projects WHERE status = 'active'\"); projects = r[0]?.values.map(row => ({name: row[0], updated: row[1]})) || []; } catch(e) {}\ndb.close();\nconst triggerInput = $input.first().json;\nconst checkinText = triggerInput.args || triggerInput.text || triggerInput.checkin_text || '';\nreturn [{ json: { created_today: created[0]?.values.map(r => ({title: r[0], priority: r[1]})) || [], completed_today: completed[0]?.values.map(r => r[0]) || [], pending: pending[0]?.values.map(r => ({title: r[0], priority: r[1]})) || [], messages_today: msgs[0]?.values.map(r => r[0]) || [], expenses_today: expenses, habits_today: habitsToday, mood_today: moodToday, commitments: commitments, recent_topics: recentTopics, projects: projects, chat_id: triggerInput.chat_id || $env.TELEGRAM_CHAT_ID, checkin_text: checkinText, has_answers: checkinText.trim().length > 0, date: new Date().toLocaleDateString('en-KE', {weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Africa/Nairobi'}) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "9dce7a41-3037-47d3-9c0c-f3c4e9198979",
+      "name": "GatherTodayContext"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.has_answers }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        0
+      ],
+      "id": "97eb364c-a07a-4074-ae52-eca7e7cdf877",
+      "name": "HasAnswers"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=Evening check-in\n\nToday: {{ $json.created_today.length }} tasks created, {{ $json.completed_today.length }} completed, {{ $json.pending.length }} pending.\n{{ $json.expenses_today.length > 0 ? 'Spent: ' + $json.expenses_today.reduce((a,b) => a + b.amount, 0) + ' KES' : '' }}\n{{ $json.habits_today.length > 0 ? 'Habits: ' + $json.habits_today.map(h => h.name + (h.done ? ' done' : ' missed')).join(', ') : '' }}\n{{ $json.recent_topics.length > 0 ? 'Topics: ' + $json.recent_topics.map(t => t.topic).join(', ') : '' }}\n\nHow did today go? Reply or /skip.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        160
+      ],
+      "id": "47c8af51-c14d-43c4-939a-a20aed3c5ac3",
+      "name": "SendCheckinPrompt",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst text = data.checkin_text || '';\nconst moodKeywords = { great: ['amazing', 'great', 'excellent', 'productive', 'crushed'], good: ['good', 'solid', 'decent', 'fine', 'alright'], okay: ['meh', 'average', 'normal', 'so-so'], low: ['tired', 'exhausted', 'drained', 'unproductive', 'rough'], bad: ['terrible', 'awful', 'failed', 'wasted', 'nothing'] };\nconst lower = text.toLowerCase();\nlet mood = 'okay';\nfor (const [level, keywords] of Object.entries(moodKeywords)) { if (keywords.some(k => lower.includes(k))) { mood = level; break; } }\nlet energy = null;\nconst energyMatch = text.match(/energy[\\s:]*([1-5])/i);\nif (energyMatch) energy = parseInt(energyMatch[1]);\nreturn [{ json: { ...data, reflection_text: text, mood, energy } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -80
+      ],
+      "id": "ff98af3c-048a-49c3-80bf-faed9f05bf83",
+      "name": "ParseAnswers"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Summarize this evening reflection. Today: {{ $json.completed_today.length }} tasks done, {{ $json.pending.length }} pending. Mood: {{ $json.mood }}. User says: {{ $json.reflection_text || 'No reflection' }}. Generate 2-3 sentences, be specific and direct."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 512
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        944,
+        -80
+      ],
+      "id": "a8e6f586-3f6d-48a8-84f5-dcfb7c3cd2a9",
+      "name": "GenerateSummary",
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst text = input.content?.[0]?.text || '';\nconst prev = $('ParseAnswers').item.json;\nreturn [{ json: { ...prev, summary: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        -80
+      ],
+      "id": "8552717a-43d2-48e6-a7ed-df83265a718e",
+      "name": "ExtractSummary"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst data = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst date = new Date().toISOString().split('T')[0];\ndb.run(\"INSERT OR REPLACE INTO reflections (date, q1_accomplished, q2_time_usage, q3_pending, q4_blockers, summary, mood_signal) VALUES (?, ?, ?, ?, ?, ?, ?)\", [date, data.completed_today?.join(', ') || '', data.reflection_text || '', data.pending?.map(t=>t.title).join(', ') || '', '', data.summary || '', data.mood || 'unclear']);\ntry { db.run(\"INSERT INTO mood_entries (mood, energy_level, notes, source) VALUES (?, ?, ?, 'checkin')\", [data.mood || 'okay', data.energy || null, data.reflection_text || '']); } catch(e) {}\ntry { const topics = (data.recent_topics || []).map(t => t.topic); db.run(\"INSERT INTO conversation_summaries (session_id, started_at, ended_at, summary, topics, mood, message_count) VALUES (?, datetime('now', '-2 hours'), datetime('now'), ?, ?, ?, ?)\", ['evening-' + date, data.summary || '', JSON.stringify(topics), data.mood || 'okay', data.messages_today?.length || 0]); } catch(e) {}\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { ...data, date } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -80
+      ],
+      "id": "ea828228-ce07-4a06-951f-89a750e4ccfc",
+      "name": "SaveReflection"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=Reflection saved\n\n{{ $json.summary }}\n\nMood: {{ $json.mood }}{{ $json.energy ? ' | Energy: ' + $json.energy + '/5' : '' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        -80
+      ],
+      "id": "87ec6021-42d7-43dc-867e-d5fd1c72b7ba",
+      "name": "SendConfirmation",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Schedule 20:00": {
+      "main": [
+        [
+          {
+            "node": "GatherTodayContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "GatherTodayContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "GatherTodayContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GatherTodayContext": {
+      "main": [
+        [
+          {
+            "node": "HasAnswers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HasAnswers": {
+      "main": [
+        [
+          {
+            "node": "ParseAnswers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SendCheckinPrompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseAnswers": {
+      "main": [
+        [
+          {
+            "node": "GenerateSummary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateSummary": {
+      "main": [
+        [
+          {
+            "node": "ExtractSummary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractSummary": {
+      "main": [
+        [
+          {
+            "node": "SaveReflection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveReflection": {
+      "main": [
+        [
+          {
+            "node": "SendConfirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "errorWorkflow": "pErrAlert2610250"
+  },
+  "tags": []
+}

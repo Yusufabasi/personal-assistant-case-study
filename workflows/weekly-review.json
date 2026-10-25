@@ -1,0 +1,216 @@
+{
+  "id": "vCsbudMTTGSUzliF",
+  "name": "Weekly Review",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 0"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "793c46cd-5721-4621-8018-8343a153a4dc",
+      "name": "Schedule Sunday 10:00"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ],
+      "id": "945890f5-f72d-4345-ab37-883aa1590081",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\n\n// Tasks this week\nconst created = db.exec(\"SELECT COUNT(*) FROM tasks WHERE created_at >= date('now', '-7 days')\");\nconst completed = db.exec(\"SELECT COUNT(*) FROM tasks WHERE status='done' AND created_at >= date('now', '-7 days')\");\nconst pending = db.exec(\"SELECT COUNT(*) FROM tasks WHERE status='pending'\");\nconst overdue = db.exec(\"SELECT COUNT(*) FROM tasks WHERE status='pending' AND due_date < date('now') AND due_date IS NOT NULL\");\n\n// Reflections this week\nconst reflections = db.exec(\"SELECT date, summary, mood_signal FROM reflections WHERE date >= date('now', '-7 days') ORDER BY date\");\n\n// Expenses this week\nconst expenses = db.exec(\"SELECT SUM(amount), category FROM expenses WHERE logged_at >= date('now', '-7 days') GROUP BY category ORDER BY SUM(amount) DESC\");\n\n// Habits this week\nlet habitStats = [];\ntry {\n  const r = db.exec(\"SELECT h.name, COUNT(CASE WHEN he.completed = 1 THEN 1 END) as done_count, h.current_streak, h.best_streak FROM habits h LEFT JOIN habit_entries he ON h.id = he.habit_id AND he.date >= date('now', '-7 days') WHERE h.is_active = 1 GROUP BY h.id\");\n  habitStats = r[0]?.values.map(row => ({name: row[0], done: row[1], streak: row[2], best: row[3]})) || [];\n} catch(e) {}\n\n// Mood this week\nlet moods = [];\ntry {\n  const r = db.exec(\"SELECT mood, energy_level, DATE(logged_at) FROM mood_entries WHERE logged_at >= date('now', '-7 days') ORDER BY logged_at\");\n  moods = r[0]?.values.map(row => ({mood: row[0], energy: row[1], date: row[2]})) || [];\n} catch(e) {}\n\n// Contacts touched\nlet contacts = [];\ntry {\n  const r = db.exec(\"SELECT name, last_interaction, role FROM contacts ORDER BY last_interaction DESC LIMIT 10\");\n  contacts = r[0]?.values.map(row => ({name: row[0], lastSeen: row[1], role: row[2]})) || [];\n} catch(e) {}\n\n// Ideas captured\nlet ideas = [];\ntry {\n  const r = db.exec(\"SELECT title, score, status FROM ideas WHERE created_at >= date('now', '-7 days')\");\n  ideas = r[0]?.values.map(row => ({title: row[0], score: row[1], status: row[2]})) || [];\n} catch(e) {}\n\n// Knowledge added\nlet kbCount = 0;\ntry {\n  const r = db.exec(\"SELECT COUNT(*) FROM knowledge_base WHERE created_at >= date('now', '-7 days')\");\n  kbCount = r[0]?.values[0][0] || 0;\n} catch(e) {}\n\n// Commitments\nlet commitments = [];\ntry {\n  const r = db.exec(\"SELECT description, status, deadline FROM commitments WHERE status IN ('active', 'completed', 'broken') ORDER BY deadline\");\n  commitments = r[0]?.values.map(row => ({desc: row[0], status: row[1], deadline: row[2]})) || [];\n} catch(e) {}\n\n// Projects activity\nlet projects = [];\ntry {\n  const r = db.exec(\"SELECT name, status, last_updated FROM projects WHERE status = 'active'\");\n  projects = r[0]?.values.map(row => ({name: row[0], status: row[1], updated: row[2]})) || [];\n} catch(e) {}\n\ndb.close();\n\nreturn [{\n  json: {\n    tasks_created: created[0]?.values[0][0] || 0,\n    tasks_completed: completed[0]?.values[0][0] || 0,\n    tasks_pending: pending[0]?.values[0][0] || 0,\n    tasks_overdue: overdue[0]?.values[0][0] || 0,\n    reflections: reflections[0]?.values.map(r => ({date: r[0], summary: r[1], mood: r[2]})) || [],\n    expenses: expenses[0]?.values.map(r => ({total: r[0], category: r[1]})) || [],\n    habit_stats: habitStats,\n    moods: moods,\n    contacts: contacts,\n    ideas: ideas,\n    kb_count: kbCount,\n    commitments: commitments,\n    projects: projects,\n    chat_id: $env.TELEGRAM_CHAT_ID,\n    week: new Date().toLocaleDateString('en-KE', {timeZone: 'Africa/Nairobi'})\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        0
+      ],
+      "id": "78956073-43a2-4a29-937b-523266758784",
+      "name": "GatherWeekData"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Generate the user's weekly review report for the week ending {{ $json.week }}.\n\nDATA:\nTasks: {{ $json.tasks_completed }} completed, {{ $json.tasks_pending }} pending, {{ $json.tasks_overdue }} overdue\nReflections: {{ JSON.stringify($json.reflections) }}\nExpenses: {{ JSON.stringify($json.expenses) }}\nHabits: {{ JSON.stringify($json.habit_stats) }}\nMoods: {{ JSON.stringify($json.moods) }}\nContacts: {{ JSON.stringify($json.contacts) }}\nIdeas: {{ JSON.stringify($json.ideas) }}\nKnowledge added: {{ $json.kb_count }} items\nCommitments: {{ JSON.stringify($json.commitments) }}\nProjects: {{ JSON.stringify($json.projects) }}\n\nGenerate a comprehensive but concise weekly review (under 2000 chars). Structure:\n1. Accomplishments (what got done)\n2. Missed targets (what didn't)\n3. Patterns (mood, energy, productivity trends)\n4. Finances (spending summary)\n5. Accountability (commitments status)\n6. Next week priorities\n\nBe direct and honest. Reference actual numbers. Call out broken commitments."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "id": "509a1e00-7e33-44bd-8927-90751ece3e18",
+      "name": "GenerateReview",
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst text = input.content?.[0]?.text || input.text || '';\nconst ctx = $('GatherWeekData').item.json;\nreturn [{ json: { chat_id: ctx.chat_id, message: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "16872db9-437e-4bfe-93c0-4e157f91b466",
+      "name": "ExtractReview"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst data = $input.first().json;\nconst date = new Date().toISOString().split('T')[0];\nconst dir = '/vault/AI Memory/weekly-reports';\ntry { fs.mkdirSync(dir, { recursive: true }); } catch(e) {}\nfs.writeFileSync(dir + '/' + date + '.md', data.message, 'utf8');\nreturn [{ json: data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "fec9ad33-0ff7-488a-b2a9-aaa6f5d0e744",
+      "name": "SaveReviewToVault"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "8906d6f7-5219-43dd-b101-f915a57e64a7",
+      "name": "SendReview",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Schedule Sunday 10:00": {
+      "main": [
+        [
+          {
+            "node": "GatherWeekData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "GatherWeekData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GatherWeekData": {
+      "main": [
+        [
+          {
+            "node": "GenerateReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerateReview": {
+      "main": [
+        [
+          {
+            "node": "ExtractReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractReview": {
+      "main": [
+        [
+          {
+            "node": "SaveReviewToVault",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveReviewToVault": {
+      "main": [
+        [
+          {
+            "node": "SendReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "pErrAlert2610250"
+  },
+  "tags": []
+}

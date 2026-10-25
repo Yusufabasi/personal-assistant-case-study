@@ -1,0 +1,337 @@
+{
+  "id": "JuD2E0ZlA9jG1qfz",
+  "name": "Intel Brief Scanner",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 6 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a30c0607-5263-4f81-906b-1210fe818ac7",
+      "name": "Schedule 06:15"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ],
+      "id": "71cc2cc9-3c46-44ce-81dc-3f7f292e9897",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://hacker-news.firebaseio.com/v0/topstories.json",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        112
+      ],
+      "id": "f1c33b63-2b9a-4d98-9eba-c4d81a017a9b",
+      "name": "FetchHNTopStories",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n may hand the id list over as one array item or as one item per id\nconst raw = $input.all().map(i => i.json);\nconst ids = raw.length === 1 && Array.isArray(raw[0])\n  ? raw[0]\n  : raw.map(x => (x !== null && typeof x === 'object' ? (x.data ?? x.id) : x));\nconst top20 = (Array.isArray(ids) ? ids : []).slice(0, 20);\nconst items = [];\nfor (const id of top20) {\n  try {\n    const resp = await this.helpers.httpRequest({ url: `https://hacker-news.firebaseio.com/v0/item/${id}.json`, timeout: 5000 });\n    if (resp && resp.title) items.push({ id: resp.id, title: resp.title, url: resp.url || '', score: resp.score || 0, comments: resp.descendants || 0, by: resp.by || '' });\n  } catch(e) {}\n}\nreturn [{ json: { items } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        112
+      ],
+      "id": "5c332b6c-9c96-4c93-9793-4273b95dfd95",
+      "name": "FetchHNDetails"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/search/repositories?q=created:>{{ new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().slice(0, 10) }}&sort=stars&order=desc&per_page=15",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-intel-brief-scanner"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        112
+      ],
+      "id": "e1d6be08-1ea2-42be-bd43-a4bcc0fb7909",
+      "name": "FetchGitHubTrending",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst items = (data.items || []).slice(0, 15).map(r => ({\n  title: r.full_name + ' - ' + (r.description || '').substring(0, 100),\n  url: r.html_url,\n  stars: r.stargazers_count,\n  language: r.language || '',\n  topics: (r.topics || []).slice(0, 5)\n}));\nreturn [{ json: { items } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        112
+      ],
+      "id": "8117f1dc-9585-4da8-99f4-d0e08cc23141",
+      "name": "ParseGitHub"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Filter these items for relevance to the user.\n\nThe user's profile:\n- [YOUR ROLE AND CITY]\n- Skills: [YOUR SKILLS]\n- Interests: [YOUR INTERESTS]\n- Projects: [YOUR PROJECTS]\n- Goals: [YOUR GOALS]\n\nHacker News (score = popularity):\n{{ JSON.stringify($('FetchHNDetails').item.json) }}\n\nGitHub Trending:\n{{ JSON.stringify($('ParseGitHub').item.json) }}\n\nScore each item 0.0-1.0 by relevance. Discard below 0.3.\nReturn JSON array: [{title, url, summary (1 sentence why relevant), source ('hn'/'github'), score}]\nReturn ONLY the JSON array, no prose."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        112
+      ],
+      "id": "732721e3-5ada-4eb5-a0cf-277f67b5e836",
+      "name": "FilterRelevance",
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst raw = input.content?.[0]?.text || input.text || '[]';\nlet items;\ntry {\n  const cleaned = raw.replace(/^```json/m, '').replace(/^```/m, '').replace(/```$/m, '').trim();\n  items = JSON.parse(cleaned);\n} catch(e) {\n  try {\n    const match = raw.match(/\\[\\s*\\{.*\\}\\s*\\]/s);\n    items = match ? JSON.parse(match[0]) : [];\n  } catch(e2) { items = []; }\n}\nreturn [{ json: { items: Array.isArray(items) ? items.slice(0, 10) : [] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        112
+      ],
+      "id": "b23e3575-32fb-4d34-9246-1019dcc23858",
+      "name": "ParseFiltered"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst data = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nlet stored = 0;\nfor (const item of (data.items || [])) {\n  try {\n    db.run('INSERT INTO opportunities (source, title, url, summary, relevance_score, category, tags) VALUES (?, ?, ?, ?, ?, ?, ?)',\n      [item.source || 'unknown', item.title || '', item.url || '', item.summary || '', item.score || 0, 'news', JSON.stringify([])]);\n    stored++;\n  } catch(e) {}\n}\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { ...data, stored } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        112
+      ],
+      "id": "92a71b22-ef89-4355-a669-bdd11a70a82e",
+      "name": "StoreOpportunities"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst items = data.items || [];\nif (!items.length) return [{ json: { chat_id: $env.TELEGRAM_CHAT_ID, message: 'No relevant items found today.' } }];\nlet msg = 'Intelligence Brief\\n\\n';\nconst hn = items.filter(i => i.source === 'hn');\nconst gh = items.filter(i => i.source === 'github');\nif (hn.length) { msg += 'Hacker News:\\n'; hn.forEach((item, i) => { msg += (i+1) + '. ' + item.title + '\\n   ' + (item.summary || '') + '\\n   ' + item.url + '\\n\\n'; }); }\nif (gh.length) { msg += 'GitHub Trending:\\n'; gh.forEach((item, i) => { msg += (i+1) + '. ' + item.title + '\\n   ' + (item.summary || '') + '\\n   ' + item.url + '\\n\\n'; }); }\nmsg += 'Stored ' + data.stored + ' items.';\nreturn [{ json: { chat_id: $env.TELEGRAM_CHAT_ID, message: msg.substring(0, 3000) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        112
+      ],
+      "id": "76f92f1e-9cf4-43a1-b847-170552089093",
+      "name": "FormatAndSend"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2032,
+        112
+      ],
+      "id": "280f8b99-b9d9-406d-9707-76089f66a95d",
+      "name": "SendBrief",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Schedule 06:15": {
+      "main": [
+        [
+          {
+            "node": "FetchHNTopStories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "FetchHNTopStories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FetchHNTopStories": {
+      "main": [
+        [
+          {
+            "node": "FetchHNDetails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FetchHNDetails": {
+      "main": [
+        [
+          {
+            "node": "FetchGitHubTrending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FetchGitHubTrending": {
+      "main": [
+        [
+          {
+            "node": "ParseGitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseGitHub": {
+      "main": [
+        [
+          {
+            "node": "FilterRelevance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FilterRelevance": {
+      "main": [
+        [
+          {
+            "node": "ParseFiltered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseFiltered": {
+      "main": [
+        [
+          {
+            "node": "StoreOpportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "StoreOpportunities": {
+      "main": [
+        [
+          {
+            "node": "FormatAndSend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatAndSend": {
+      "main": [
+        [
+          {
+            "node": "SendBrief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "pErrAlert2610250"
+  },
+  "tags": []
+}

@@ -1,0 +1,1501 @@
+{
+  "id": "FaKHjwDmFI63Bv3T",
+  "name": "Personal Assistant v2",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2416,
+        512
+      ],
+      "id": "8760d997-91f0-40d5-9522-3df35364103b",
+      "name": "Telegram Trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $input.first().json;\nconst text = message.message?.text || message.text || '';\nconst chatId = message.message?.chat?.id || message.chat?.id;\nconst messageId = message.message?.message_id || message.update_id;\nconst timestamp = new Date().toISOString();\n\n// Only the owner may use the assistant. Deny by default if the env var is missing.\nconst allowedChat = String($env.TELEGRAM_CHAT_ID || '');\nif (!allowedChat || String(chatId) !== allowedChat) return [];\n\nlet command = null;\nlet args = text;\nif (text.startsWith('/')) {\n  const match = text.match(/^\\/(\\w+)\\s*(.*)$/s);\n  if (match) {\n    command = match[1].toLowerCase();\n    args = match[2].trim();\n  }\n}\n\nreturn [{\n  json: {\n    source: 'telegram',\n    external_id: String(messageId),\n    chat_id: String(chatId),\n    text,\n    command,\n    args,\n    timestamp\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        512
+      ],
+      "id": "efc1a45e-2447-42a3-a35d-ab5d91fcd38e",
+      "name": "ParseCommand"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "checkin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "plan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4",
+                    "leftValue": "={{ $json.command }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        512
+      ],
+      "id": "a7622e0d-3c14-4d73-a24f-070fdd3645ce",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "Personal Assistant v2\n\nJust talk naturally.\n\nTry:\n- spent 500 on lunch\n- meeting with John at 3pm tomorrow\n- I slept 6 hours\n- save this article: [url]\n- what do I know about Supabase?\n- I have an idea - AI meal planner\n- how's [project] going?\n\nCommands:\n/status - tasks and projects\n/checkin - evening reflection\n/plan - morning brief\n/done <id> - complete task\n/list - all tasks\n/help - this message",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1760,
+        1008
+      ],
+      "id": "f86873a9-561e-42b9-8f47-739540dc2308",
+      "name": "SendHelp",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YEQmjDzj4r6pxmiX",
+          "mode": "name",
+          "cachedResultName": "Evening Reflection v2"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1760,
+        704
+      ],
+      "id": "630354a3-6ec9-4583-b1fa-f11b97ff7501",
+      "name": "ExecuteCheckin"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hQX85hS0eq47Vdqa",
+          "mode": "name",
+          "cachedResultName": "Morning Brief v2"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1760,
+        848
+      ],
+      "id": "e7e4a51d-20f8-4018-bc49-e8df9cc2b726",
+      "name": "ExecutePlan"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst pending = db.exec(`SELECT id, title, priority FROM tasks WHERE status='pending' ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END LIMIT 10`);\nconst doneToday = db.exec(`SELECT COUNT(*) FROM tasks WHERE status='done' AND DATE(created_at) = DATE('now', 'localtime')`);\nconst projects = db.exec(`SELECT name FROM projects WHERE status='active'`);\ndb.close();\nconst tasks = pending[0]?.values.map(r => `[${r[0]}] ${r[1]} [${r[2]}]`).join('\\n') || 'None';\nconst projectNames = projects[0]?.values.map(r => r[0]).join(', ') || 'None';\nconst doneCount = doneToday[0]?.values[0][0] || 0;\nconst msg = `Pending tasks (${pending[0]?.values.length || 0}):\\n${tasks}\\n\\nDone today: ${doneCount}\\nActive projects: ${projectNames}`;\nreturn [{ json: { chat_id: input.chat_id, message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        512
+      ],
+      "id": "a6408647-e08b-4d9c-8941-0313a174d8c3",
+      "name": "StatusQuery"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1536,
+        592
+      ],
+      "id": "a7e6c859-aa92-4c7e-a1f6-877baba9bff1",
+      "name": "SendStatusReply",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst stmt = db.prepare('SELECT id FROM messages WHERE external_id = ?');\nstmt.bind([input.external_id]);\nlet exists = false;\nif (stmt.step()) exists = true;\nstmt.free();\ndb.close();\nreturn [{ json: { ...input, is_duplicate: exists } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        272
+      ],
+      "id": "13f4cfa1-9f71-48da-abf3-e23ec246bd64",
+      "name": "IdempotencyCheck"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.is_duplicate }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1536,
+        432
+      ],
+      "id": "12da9e07-c8e1-49e1-8c3f-e3756903985c",
+      "name": "IdempotencyGate"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        544
+      ],
+      "id": "671140f9-b6fb-44f2-913c-90a03ed35035",
+      "name": "DuplicateStop"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run(`INSERT OR IGNORE INTO messages (external_id, source, content, timestamp, processed) VALUES (?, ?, ?, ?, 0)`, [input.external_id, input.source, input.text, input.timestamp]);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: input }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        432
+      ],
+      "id": "c2b170b2-49eb-4ebf-b805-2d785604a674",
+      "name": "InsertMessage"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nlet recentSummaries = [];\ntry {\n  const r = db.exec(`SELECT summary, topics, mood FROM conversation_summaries ORDER BY created_at DESC LIMIT 3`);\n  recentSummaries = r[0]?.values.map(row => ({ summary: row[0], topics: row[1], mood: row[2] })) || [];\n} catch(e) {}\nlet activeTopics = [];\ntry {\n  const r = db.exec(`SELECT topic, summary, related_project FROM active_topics WHERE status = 'open' ORDER BY last_mentioned DESC LIMIT 5`);\n  activeTopics = r[0]?.values.map(row => ({ topic: row[0], summary: row[1], project: row[2] })) || [];\n} catch(e) {}\nlet commitments = [];\ntry {\n  const r = db.exec(`SELECT description, deadline, related_project FROM commitments WHERE status = 'active' ORDER BY deadline ASC LIMIT 5`);\n  commitments = r[0]?.values.map(row => ({ description: row[0], deadline: row[1], project: row[2] })) || [];\n} catch(e) {}\nlet pendingCount = 0;\ntry {\n  const r = db.exec(`SELECT COUNT(*) FROM tasks WHERE status = 'pending'`);\n  pendingCount = r[0]?.values[0][0] || 0;\n} catch(e) {}\ndb.close();\nconst ctx = [];\nif (recentSummaries.length) ctx.push('RECENT:\\n' + recentSummaries.map(s => s.summary).join('\\n'));\nif (activeTopics.length) ctx.push('TOPICS:\\n' + activeTopics.map(t => t.topic + ': ' + (t.summary || '')).join('\\n'));\nif (commitments.length) ctx.push('COMMITMENTS:\\n' + commitments.map(c => c.description).join('\\n'));\nreturn [{ json: { ...input, memory_context: ctx.join('\\n\\n'), pending_tasks: pendingCount } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        432
+      ],
+      "id": "9b21a54b-c472-4329-a116-77941afda837",
+      "name": "LoadContext"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an intent classifier for the user's personal assistant. Return ONLY valid JSON.\n\nUser: [YOUR NAME], [your role and city]. Working on [your projects]. Uses [your currency].\n\nMEMORY: {{ $json.memory_context || 'None' }}\n\nINTENTS (pick ONE):\n- log_expense: spent X on Y, paid X for Y\n- log_income: earned X, client paid X\n- create_event: meeting at X, appointment on Y\n- create_task: I need to, add task, todo\n- complete_task: done with X, finished X, exams are over\n- delete_task: remove X, delete task, cancel X\n- list_tasks: show tasks, what's pending\n- log_habit: slept Xh, gym yes, ran Xkm\n- log_mood: feeling X, energy is Y\n- capture_idea: I have an idea, what if we built\n- save_knowledge: remember this, save this info\n- query_knowledge: what do I know about X\n- project_status: how's X going, status of X\n- reminder: remind me to X on Y\n- learning_update: started learning X, finished Y\n- general_question: what is, how do, why does\n- general_capture: everything else\n\nSchema: {\"intent\": \"\", \"confidence\": 0.0-1.0, \"params\": {...}, \"original_text\": \"full message\"}\n\nParams by intent:\n- log_expense: {amount, currency, category, description}\n- create_event: {title, start_time, end_time, location}\n- create_task: {title, priority, due_date, context_tag}\n- complete_task: {filter}\n- delete_task: {filter}\n- log_habit: {habit_name, value, completed}\n- log_mood: {mood, energy_level}\n- capture_idea: {title, description, potential_value, effort_required}\n- save_knowledge: {title, content, category, tags}\n- query_knowledge: {search_query}\n- reminder: {text, remind_at}\n- learning_update: {track_name, title, completed}\n\nCategories(expense): food, transport, tools, subscription, education, health, other\nCategories(knowledge): technical, business, academic, personal, reference\n\nMessage: {{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        432
+      ],
+      "id": "f9461b3a-098c-44ea-b2b7-5f5e1e8f98a7",
+      "name": "IntentClassifier",
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst rawText = input.content?.[0]?.text || '';\nlet intent;\ntry {\n  const cleaned = rawText.replace(/```json|```/g, '').trim();\n  intent = JSON.parse(cleaned);\n} catch (e) {\n  intent = { intent: 'general_capture', confidence: 0.3, params: {}, original_text: $('LoadContext').item.json.text };\n}\nconst origin = $('LoadContext').item.json;\nreturn [{ json: { ...intent, original_text: intent.original_text || origin.text, chat_id: origin.chat_id, external_id: origin.external_id, timestamp: origin.timestamp, memory_context: origin.memory_context, pending_tasks: origin.pending_tasks } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        432
+      ],
+      "id": "75527fb7-26cc-4dd1-998d-6d2271103ad3",
+      "name": "ParseIntent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst input = $input.first().json;\nconst files = ['User Profile.md', 'Goals.md', 'Projects.md', 'context/current.md'];\nconst parts = [];\nfor (const f of files) {\n  try {\n    const c = fs.readFileSync('/vault/AI Memory/' + f, 'utf8');\n    parts.push('### ' + f + '\\n' + c);\n  } catch(e) { parts.push('### ' + f + '\\n(not found)'); }\n}\nreturn [{ json: { ...input, vault_context: parts.join('\\n\\n---\\n\\n') } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        432
+      ],
+      "id": "15852f34-014b-40ae-9a0a-b327fecde72e",
+      "name": "LoadVaultContext"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "log_expense",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "log_income",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_event",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "complete_task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "delete_task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "list_tasks",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "log_habit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "log_mood",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "10",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "capture_idea",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "11",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "save_knowledge",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "12",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "query_knowledge",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "13",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "project_status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "14",
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "reminder",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        432
+      ],
+      "id": "5e14a7b5-4ccb-431c-9a63-5b97ed3656fc",
+      "name": "RouteByIntent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run('INSERT INTO expenses (amount, currency, category, description, vendor) VALUES (?, ?, ?, ?, ?)', [p.amount||0, p.currency||'KES', p.category||'other', p.description||input.original_text, p.vendor||null]);\nconst wr = db.exec(\"SELECT SUM(amount) FROM expenses WHERE logged_at >= DATE('now', '-7 days')\");\nconst wt = wr[0]?.values[0][0] || 0;\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Logged: ' + (p.currency||'KES') + ' ' + (p.amount||0) + ' on ' + (p.category||'other') + '\\nWeekly total: ' + wt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "583395df-015b-4ddb-b7ee-401377964b1d",
+      "name": "HandleExpense"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run(\"INSERT INTO finance (type, amount, currency, client, description, date, status) VALUES ('income', ?, ?, ?, ?, DATE('now'), 'received')\", [p.amount||0, p.currency||'KES', p.source||'', p.description||input.original_text]);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Income logged: ' + (p.currency||'KES') + ' ' + (p.amount||0) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        112
+      ],
+      "id": "63c25a17-76e1-4953-84f7-9721ecd2db6f",
+      "name": "HandleIncome"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run('INSERT INTO events (title, description, location, start_time, end_time, source) VALUES (?, ?, ?, ?, ?, ?)', [p.title||input.original_text, p.description||'', p.location||null, p.start_time||new Date().toISOString(), p.end_time||null, 'telegram']);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Event created: ' + (p.title||input.original_text) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ],
+      "id": "43d426bf-1d5c-4714-b1b4-68497f742073",
+      "name": "HandleEvent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run('INSERT INTO tasks (title, priority, context_tag, due_date) VALUES (?, ?, ?, ?)', [p.title||input.original_text, p.priority||'medium', p.context_tag||'personal', p.due_date||null]);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Task added: ' + (p.title||input.original_text) + ' [' + (p.priority||'medium') + ']' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ],
+      "id": "3e3ecb14-6577-49d5-b4f2-7bce09027a42",
+      "name": "HandleCreateTask"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nlet updated = 0;\nconst filter = (p.filter || input.original_text).toLowerCase();\nconst rows = db.exec(\"SELECT id, title FROM tasks WHERE status = 'pending'\");\nif (rows[0]?.values.length) {\n  for (const row of rows[0].values) {\n    const t = String(row[1]).toLowerCase();\n    if (t.includes(filter) || filter.includes('all') || filter.includes('everything') || filter.includes('over')) {\n      db.run('UPDATE tasks SET status = ' + \"'done'\" + ' WHERE id = ?', [row[0]]);\n      updated++;\n    }\n  }\n}\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: updated > 0 ? 'Completed ' + updated + ' task(s)' : 'No matching tasks found for: ' + filter } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        400
+      ],
+      "id": "1750fd8f-186b-4f87-9100-553fca34b49c",
+      "name": "HandleCompleteTask"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst filter = String(p.filter || input.original_text || '').trim().toLowerCase();\nif (filter.length < 3) {\n  return [{ json: { chat_id: input.chat_id, message: 'Tell me which task to delete (at least 3 letters of its title).' } }];\n}\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst rows = db.exec(\"SELECT id, title FROM tasks WHERE status = 'pending'\");\nconst matches = (rows[0]?.values || []).filter(r => String(r[1]).toLowerCase().includes(filter));\nlet message;\nif (matches.length === 0) {\n  message = 'No pending task matches: ' + filter;\n} else if (matches.length > 1) {\n  message = 'More than one task matches, nothing deleted. Be more specific:\\n' + matches.slice(0, 5).map(r => '- ' + r[1]).join('\\n');\n} else {\n  db.run('DELETE FROM tasks WHERE id = ?', [matches[0][0]]);\n  fs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\n  message = 'Deleted task: ' + matches[0][1];\n}\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        512
+      ],
+      "id": "a214f197-9d98-4a1a-aed0-c3c2c4039794",
+      "name": "HandleDeleteTask"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst pending = db.exec(\"SELECT id, title, priority, due_date FROM tasks WHERE status='pending' ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END\");\nconst doneToday = db.exec(\"SELECT title FROM tasks WHERE status='done' AND DATE(created_at) = DATE('now', 'localtime')\");\ndb.close();\nlet msg = 'Task List\\n\\n';\nif (pending[0]?.values.length) {\n  msg += 'Pending:\\n';\n  pending[0].values.forEach(r => { msg += '  [' + r[0] + '] ' + r[1] + ' [' + r[2] + ']' + (r[3] ? ' (due ' + r[3] + ')' : '') + '\\n'; });\n} else { msg += 'No pending tasks!\\n'; }\nif (doneToday[0]?.values.length) {\n  msg += '\\nDone today (' + doneToday[0].values.length + '):\\n';\n  doneToday[0].values.forEach(r => { msg += '  ' + r[0] + '\\n'; });\n}\nreturn [{ json: { chat_id: input.chat_id, message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        608
+      ],
+      "id": "60a39ac2-7239-413f-af35-1bd7ee30093e",
+      "name": "HandleListTasks"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst name = p.habit_name || 'general';\nconst val = p.value || null;\nconst done = p.completed !== false ? 1 : 0;\nconst today = new Date().toISOString().split('T')[0];\nlet hr = db.exec('SELECT id FROM habits WHERE name = ' + \"'\" + name.replace(/'/g, \"''\") + \"'\");\nlet hid;\nif (!hr[0]?.values.length) {\n  db.run('INSERT INTO habits (name, target_frequency, category) VALUES (?, ?, ?)', [name, 'daily', 'general']);\n  hr = db.exec('SELECT id FROM habits WHERE name = ' + \"'\" + name.replace(/'/g, \"''\") + \"'\");\n  hid = hr[0]?.values[0][0];\n} else { hid = hr[0].values[0][0]; }\ntry {\n  db.run('INSERT OR REPLACE INTO habit_entries (habit_id, date, completed, value) VALUES (?, ?, ?, ?)', [hid, today, done, val]);\n} catch(e) {\n  db.run('UPDATE habit_entries SET completed = ?, value = ? WHERE habit_id = ? AND date = ?', [done, val, hid, today]);\n}\nconst entries = db.exec('SELECT completed FROM habit_entries WHERE habit_id = ' + hid + ' ORDER BY date DESC LIMIT 30');\nlet streak = 0;\nif (entries[0]?.values) { for (const row of entries[0].values) { if (row[0] === 1) streak++; else break; } }\ndb.run('UPDATE habits SET current_streak = ? WHERE id = ?', [streak, hid]);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: name + ': logged | Streak: ' + streak + ' days' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        704
+      ],
+      "id": "9af270a0-c98a-4cca-8976-93b5322dd16c",
+      "name": "HandleHabit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run('INSERT INTO mood_entries (mood, energy_level, notes, source) VALUES (?, ?, ?, ?)', [p.mood||'okay', p.energy_level||null, p.notes||input.original_text, 'chat']);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Mood logged: ' + (p.mood||'okay') + (p.energy_level ? ' | Energy: ' + p.energy_level + '/5' : '') } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        800
+      ],
+      "id": "bea5d7c6-de19-477c-86d5-79c564a42946",
+      "name": "HandleMood"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst v = {low:1, medium:2, high:3};\nconst e = {small:3, medium:2, large:1, huge:0.5};\nconst score = ((v[p.potential_value]||2) / (e[p.effort_required]||2)).toFixed(2);\ndb.run('INSERT INTO ideas (title, description, potential_value, effort_required, score) VALUES (?, ?, ?, ?, ?)', [p.title||input.original_text, p.description||'', p.potential_value||'medium', p.effort_required||'medium', parseFloat(score)]);\nconst pc = db.exec(\"SELECT COUNT(*) FROM projects WHERE status = 'active'\")[0]?.values[0][0] || 0;\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nlet w = pc > 3 ? '\\nWarning: ' + pc + ' active projects. Consider parking this.' : '';\nreturn [{ json: { chat_id: input.chat_id, message: 'Idea captured: ' + (p.title||input.original_text) + ' (score: ' + score + ')' + w } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        912
+      ],
+      "id": "20c2d561-7553-4248-8a6d-befdeb230d8e",
+      "name": "HandleIdea"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst tags = JSON.stringify(p.tags || []);\ndb.run('INSERT INTO knowledge_base (title, content, category, tags, source_type, source_url) VALUES (?, ?, ?, ?, ?, ?)', [p.title||'Untitled', p.content||input.original_text, p.category||'personal', tags, p.source_url?'url':'manual', p.source_url||null]);\ntry {\n  const lid = db.exec('SELECT last_insert_rowid()')[0]?.values[0][0];\n  db.run('INSERT INTO knowledge_base_fts (rowid, title, content, summary, key_points, tags) VALUES (?, ?, ?, ?, ?, ?)', [lid, p.title||'Untitled', p.content||input.original_text, '', '', tags]);\n} catch(e) {}\nconst cnt = db.exec('SELECT COUNT(*) FROM knowledge_base')[0]?.values[0][0] || 0;\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Knowledge saved: ' + (p.title||'Untitled') + ' | Total: ' + cnt + ' items' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1008
+      ],
+      "id": "65fe58b6-4c5c-48d5-bfa4-f9831c4835cd",
+      "name": "HandleSaveKnowledge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst q = (p.search_query || input.original_text).replace(/'/g, \"''\");\nlet results = [];\ntry {\n  const r = db.exec('SELECT kb.id, kb.title, kb.summary, kb.category, kb.source_url FROM knowledge_base_fts fts JOIN knowledge_base kb ON kb.id = fts.rowid WHERE knowledge_base_fts MATCH ' + \"'\" + q + \"'\" + ' ORDER BY rank LIMIT 5');\n  if (r[0]?.values.length) results = r[0].values.map(row => ({id:row[0], title:row[1], summary:row[2], category:row[3], url:row[4]}));\n} catch(e) {\n  const r = db.exec('SELECT id, title, summary, category, source_url FROM knowledge_base WHERE title LIKE ' + \"'%\" + q + \"%'\" + ' OR content LIKE ' + \"'%\" + q + \"%'\" + ' LIMIT 5');\n  if (r[0]?.values.length) results = r[0].values.map(row => ({id:row[0], title:row[1], summary:row[2], category:row[3], url:row[4]}));\n}\nfor (const r of results) db.run('UPDATE knowledge_base SET times_referenced = times_referenced + 1 WHERE id = ?', [r.id]);\ntry { db.run('INSERT INTO knowledge_queries (query_text, results_returned, knowledge_ids) VALUES (?, ?, ?)', [p.search_query||input.original_text, results.length, JSON.stringify(results.map(r=>r.id))]); } catch(e) {}\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nif (!results.length) return [{ json: { chat_id: input.chat_id, message: 'No knowledge found for: ' + (p.search_query||input.original_text) } }];\nlet msg = 'Knowledge found (' + results.length + '):\\n\\n';\nresults.forEach((r,i) => { msg += (i+1) + '. ' + r.title + ' [' + r.category + ']' + (r.summary ? '\\n   ' + r.summary : '') + '\\n'; });\nreturn [{ json: { chat_id: input.chat_id, message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1104
+      ],
+      "id": "e7ee6386-fd9f-4624-bef8-9601df9eb386",
+      "name": "HandleQueryKnowledge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst q = (p.project_name || input.original_text).replace(/'/g, \"''\");\nconst pr = db.exec('SELECT name, status, last_updated FROM projects WHERE name LIKE ' + \"'%\" + q + \"%'\");\nconst ts = db.exec('SELECT title, priority, status FROM tasks WHERE title LIKE ' + \"'%\" + q + \"%'\" + ' ORDER BY status');\ndb.close();\nif (!pr[0]?.values.length) return [{ json: { chat_id: input.chat_id, message: 'No project found matching: ' + (p.project_name||input.original_text) } }];\nconst r = pr[0].values[0];\nlet msg = r[0] + ' - ' + r[1] + '\\nLast updated: ' + (r[2]||'unknown') + '\\n\\n';\nif (ts[0]?.values.length) {\n  msg += 'Tasks:\\n';\n  ts[0].values.forEach(t => { msg += '  ' + (t[2]==='done'?'[x]':'[ ]') + ' ' + t[0] + ' [' + t[1] + ']\\n'; });\n} else { msg += 'No tasks tracked.'; }\nreturn [{ json: { chat_id: input.chat_id, message: msg } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1200
+      ],
+      "id": "ccb9730a-8880-4259-bd2c-2f8984d62bf7",
+      "name": "HandleProjectStatus"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nconst input = $input.first().json;\nconst p = input.params || {};\n// There is no timed push yet, so a reminder is stored as a task and shows in the morning brief.\nconst what = p.text || input.original_text;\nconst when = p.remind_at ? String(p.remind_at) : '';\nconst due = /^\\d{4}-\\d{2}-\\d{2}/.test(when) ? when.slice(0, 10) : null;\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\ndb.run('INSERT INTO tasks (title, priority, context_tag, due_date) VALUES (?, ?, ?, ?)', ['Reminder: ' + what + (when ? ' (' + when + ')' : ''), 'medium', 'reminder', due]);\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: { chat_id: input.chat_id, message: 'Saved as a task: ' + what + (when ? ' (' + when + ')' : '') + '. Timed reminders are not built yet, so it will show in your morning brief.' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1312
+      ],
+      "id": "ce757ba5-2925-43fb-a010-b3b9d24b6530",
+      "name": "HandleReminder"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the user's personal assistant. Be helpful, direct, and concise.\n\nContext: {{ $json.vault_context }}\nMemory: {{ $json.memory_context || 'None' }}\n\nUser: {{ $json.original_text }}\n\nRespond naturally and concisely."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        0,
+        1408
+      ],
+      "id": "2196aa11-5d28-41e7-9070-af8bb97165b8",
+      "name": "GeneralChat",
+      "credentials": {
+        "anthropicApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst text = input.content?.[0]?.text || input.text || '';\nreturn [{ json: { chat_id: input.chat_id || $('ParseCommand').item.json.chat_id, message: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1408
+      ],
+      "id": "c00d0d89-3f22-43f0-8f69-7f5a1a2cb4c1",
+      "name": "ExtractResponse"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        1408
+      ],
+      "id": "f5688dd5-b892-4b01-a67a-b7eb7ef9f3ac",
+      "name": "SendResponse",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        912
+      ],
+      "id": "387e3503-82a1-4b9f-90ae-1cce8cbff116",
+      "name": "SendIntentReply",
+      "credentials": {
+        "telegramApi": {
+          "id": "REDACTED",
+          "name": "REDACTED"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst initSqlJs = require('/home/node/.n8n/nodes/node_modules/sql.js');\nconst DB_PATH = '/home/node/.n8n/assistant.db';\nlet text = '';\ntry {\n  const origin = $('ParseCommand').item.json;\n  text = origin.text || '';\n} catch(e) {\n  const input = $input.first().json;\n  text = input.original_text || '';\n}\nconst SQL = await initSqlJs();\nconst db = new SQL.Database(fs.readFileSync(DB_PATH));\nconst commonWords = new Set(['the','a','an','is','was','were','have','has','had','do','does','did','will','would','could','should','can','to','of','in','for','on','with','at','by','from','this','that','i','you','he','she','it','we','they','my','your','his','her','me','him','us','what','which','who','when','where','how','why','and','but','or','not','no','yes','ok','thanks','hello','hi','hey','yeah','nah','lol','task','tasks','logged','total','done','status','help','checkin','plan']);\nconst words = text.split(/\\s+/);\nconst names = words.filter(w => { const c = w.replace(/[^a-zA-Z]/g,''); return c.length > 2 && c[0] === c[0].toUpperCase() && !commonWords.has(c.toLowerCase()); }).slice(0,3);\nfor (const name of [...new Set(names)]) {\n  try {\n    const ex = db.exec('SELECT id FROM contacts WHERE name = ' + \"'\" + name.replace(/'/g,\"''\") + \"'\");\n    if (!ex[0]?.values.length) db.run('INSERT INTO contacts (name, last_interaction) VALUES (?, datetime(' + \"'now'\" + '))', [name]);\n    else db.run('UPDATE contacts SET last_interaction = datetime(' + \"'now'\" + ') WHERE id = ?', [ex[0].values[0][0]]);\n  } catch(e) {}\n}\nfs.writeFileSync(DB_PATH + '.tmp', Buffer.from(db.export())); fs.renameSync(DB_PATH + '.tmp', DB_PATH);\ndb.close();\nreturn [{ json: $input.first().json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        432
+      ],
+      "id": "5d04ff08-31fd-4fc4-95b9-bf7f809272fa",
+      "name": "PostProcess"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "ParseCommand",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseCommand": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "SendHelp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ExecuteCheckin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ExecutePlan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "StatusQuery",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IdempotencyCheck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "StatusQuery": {
+      "main": [
+        [
+          {
+            "node": "SendStatusReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IdempotencyCheck": {
+      "main": [
+        [
+          {
+            "node": "IdempotencyGate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IdempotencyGate": {
+      "main": [
+        [
+          {
+            "node": "InsertMessage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DuplicateStop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InsertMessage": {
+      "main": [
+        [
+          {
+            "node": "LoadContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadContext": {
+      "main": [
+        [
+          {
+            "node": "IntentClassifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IntentClassifier": {
+      "main": [
+        [
+          {
+            "node": "ParseIntent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseIntent": {
+      "main": [
+        [
+          {
+            "node": "LoadVaultContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadVaultContext": {
+      "main": [
+        [
+          {
+            "node": "RouteByIntent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RouteByIntent": {
+      "main": [
+        [
+          {
+            "node": "HandleExpense",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleIncome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleEvent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleCreateTask",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleCompleteTask",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleDeleteTask",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleListTasks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleHabit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleMood",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleIdea",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleSaveKnowledge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleQueryKnowledge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleProjectStatus",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HandleReminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GeneralChat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleExpense": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleIncome": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleEvent": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleCreateTask": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleCompleteTask": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleDeleteTask": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleListTasks": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleHabit": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleMood": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleIdea": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleSaveKnowledge": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleQueryKnowledge": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleProjectStatus": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HandleReminder": {
+      "main": [
+        [
+          {
+            "node": "SendIntentReply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GeneralChat": {
+      "main": [
+        [
+          {
+            "node": "ExtractResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractResponse": {
+      "main": [
+        [
+          {
+            "node": "SendResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendResponse": {
+      "main": [
+        [
+          {
+            "node": "PostProcess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SendIntentReply": {
+      "main": [
+        [
+          {
+            "node": "PostProcess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "pErrAlert2610250"
+  },
+  "tags": []
+}

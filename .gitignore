@@ -1,0 +1,15 @@
+.env
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+n8n-data/
+backups/
+.freebuff/
+*.log

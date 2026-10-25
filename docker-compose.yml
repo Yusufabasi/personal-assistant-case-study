@@ -1,0 +1,26 @@
+# Reference setup for the n8n instance the assistant runs on.
+# Paths are generalised; the settings are the ones in use, with the known weak ones marked.
+services:
+  n8n:
+    image: n8nio/n8n:2.26.6           # pinned to the version the workflows were exported from
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"         # editor only on this machine; Telegram reaches it through the tunnel
+    env_file:
+      - ./.env
+    environment:
+      - GENERIC_TIMEZONE=Africa/Nairobi
+      - TZ=Africa/Nairobi
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - N8N_RESTRICT_FILE_ACCESS_TO=/vault;/home/node/.n8n
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      # Known gaps, tracked in docs/hardening.md:
+      - N8N_SECURE_COOKIE=false                # needed only while the editor is served over plain http
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs         # Code nodes read and write the database and vault files
+      - NODE_FUNCTION_ALLOW_EXTERNAL=*         # TODO: narrow to sql.js
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false     # workflows read $env.TELEGRAM_CHAT_ID
+    volumes:
+      - ./n8n-data:/home/node/.n8n             # holds assistant.db, the n8n database and its encryption key
+      - ./vault-sample:/vault                  # point this at your own notes folder in real use
